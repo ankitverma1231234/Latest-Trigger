@@ -116,7 +116,7 @@ public class consertupdate {
                     ev.Subject = newMap.get(ev.WhatId).Name;
                     ev.Location = newMap.get(ev.WhatId).venue__c;
                     ev.StartDateTime = newMap.get(ev.WhatId).Date__c;
-                    ev.EndDateTime = newMap.get(ev.WhatId).Date__c+2;
+                    ev.EndDateTime = newMap.get(ev.WhatId).Date__c+1;
                     ev.Description = 'Hii ,' +ev.Who.Name +'\n Greeting! \n' +ev.Subject +'\nat\n' +ev.Location +'\non\n'+ev.StartDateTime    +'\n Please Visit! \n' + 'Happy Event!' ;
                     eventlist.add(ev);
                 }
