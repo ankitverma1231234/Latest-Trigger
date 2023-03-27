@@ -1,0 +1,142 @@
+Trigger on Ticket object
+Handler Classs-
+
+public class Eventdescription {
+    public static void my_event(List<ticket__c> tlist){
+        set<id> concertIds = new set<id>();//To hold Ids of concerts
+        set<id> contactIds = new set<id>();//To hold Ids of contacts
+        Map<id,consert__c> concertsById = new Map<id,consert__c>();//fill the map with concerts ids 
+        Map<id,contact> contactById = new Map<id,contact>();
+        
+        
+        for(ticket__c tc:tlist){
+            concertIds.add(tc.consert__c);
+            contactIds.add(tc.Contact__c);
+        }
+        for(consert__c consert: [select id,name,venue__c ,date__c  from consert__c where id In: concertIds]){
+            concertsById.put(consert.Id,consert);
+            
+        }
+        for( contact contact :[select id,name from contact where id in :contactIds]){
+            contactById.put(contact.Id,contact);
+        }
+        List<Event> eventlist = new List<Event>();
+        for(ticket__c tc: tlist){
+            consert__c  consert  = concertsById.get(tc.consert__c);
+            contact contact =  contactById.get(tc.Contact__c);
+            if( consert !=null && contact!=null){
+                Event event = new Event();
+               // event.Id = tc.Id;
+                event.Subject = 'Music event';
+                event.Description = 'Hii '    + contact.Name  +'\nGretting!\n'   +consert.Name  + '\nat\n' +consert.venue__c    +'\non\n'         +consert.Date__c        +  '\nplease visit Happy Event\n';
+                event.Location ='Haldwani';
+                event.StartDateTime = system.now();
+                event.EndDateTime = event.StartDateTime.addHours(2);
+                event.WhoId = contact.Id;
+                event.WhatId = consert.Id;
+                eventlist.add(event);
+                
+            }
+        }
+        
+        insert eventlist;
+    }
+    
+}
+
+*********************** Trigger*************************************
+trigger Eventinsert on ticket__c (after insert) {
+    if(trigger.isafter){
+        if(trigger.isinsert){
+            Eventdescription.my_event(trigger.new);
+        }
+    }
+    
+}
+
+
+Trigger on contact object
+Handler Class-
+public class ContactToupdate {
+    public static void my_contact(List<contact> conlist){
+        
+        // create set to hold contact id
+        set<id> contactIds = new set<id>();
+        //Add id into contact 
+        for(contact con : conlist){
+            contactIds.add(con.Id);
+            system.debug('@@@@@>>>>>'+contactIds);
+        }
+        
+        // Query and retrive data for event
+        List<Event> eventlist = [SELECT Id, WhoId, Who.Name, Subject, Location, StartDateTime, Description FROM Event WHERE WhoId IN : contactIds];
+        List<Event> evlist = new List<Event>();
+        for(Event evt : eventlist) {
+            system.debug('@@@@@++++');
+            system.debug('Event ==> '+evt);
+            String cst = evt.Who.Name;
+            system.debug('Contact == ' +cst);
+            evt.Description = 'Hi ' + cst + '\nGreeting!\n  \nYou are invited to\n ' + evt.Subject +' at '+evt.Location+ ' on ' + evt.StartDateTime + '\nPlease visit! \nHappy Event!';
+            evlist.add(evt);
+        }
+        // update Event
+        if(!evlist.isEmpty()){
+            update evlist;
+        }
+        
+        
+    }
+}
+********************* Trigger*********************
+trigger contacupdate on Contact (after update) {
+    
+    if(trigger.isafter && trigger.isupdate){
+        ContactToupdate.my_contact(trigger.new);
+    }
+}
+
+Trigger on Consert object
+Handler Class-
+public class consertupdate {
+    public static void my_consert(List<consert__c> consrlist,Map<id,consert__c> newMap){
+       if (Schema.sObjectType.consert__c.isupdateable()) { 
+            // update consert__c
+            // Create a set to hold consertId
+            set<id> consertIds = new set<id>();
+            for(consert__c cons: consrlist){
+                consertIds.add(cons.Id);
+                list<event> eventoncon=[SELECT Id, WhatId,Description, Subject,who.name, who.id, ActivityDate, StartDateTime,          What.Id,What.name,
+                                        Owner.Id, Owner.LastName, Owner.Email
+                                        FROM Event where WhatId =:consertIds];
+                // Quer all customer from ticket object
+                List<ticket__c> ticketcon = [select id,Contact__c, consert__c from ticket__c Where consert__c =: consertIds];
+                // create a Event List
+                List<Event> eventlist = new List<Event>();
+                for(event ev :eventoncon){
+                    ev.Subject = newMap.get(ev.WhatId).Name;
+                    ev.Location = newMap.get(ev.WhatId).venue__c;
+                    ev.StartDateTime = newMap.get(ev.WhatId).Date__c;
+                    ev.EndDateTime = newMap.get(ev.WhatId).Date__c+5;
+                    ev.Description = 'Hii ,' +ev.Who.Name +'\n Greeting! \n' +ev.Subject +'\nat\n' +ev.Location +'\non\n'+ev.StartDateTime    +'\n Please Visit! \n' + 'Happy Event!' ;
+                    eventlist.add(ev);
+                }
+                // update Events
+                update eventlist;
+            }
+            
+        }
+        
+    }
+}
+
+********************* Trigger*********************
+trigger consertupdate on consert__c (after update) {
+    if(trigger.isafter && trigger.isupdate){
+        consertupdate.my_consert(trigger.new, trigger.newMap);
+    }
+
+}
+    
+
+
+
