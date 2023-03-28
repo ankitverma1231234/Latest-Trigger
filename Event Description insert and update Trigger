@@ -89,9 +89,19 @@ public class ContactToupdate {
 }
 ********************* Trigger*********************
 trigger contacupdate on Contact (after update) {
-    
-    if(trigger.isafter && trigger.isupdate){
-        ContactToupdate.my_contact(trigger.new);
+    // get the id of the customer record type
+    List<contact> conlist = new List<contact>();
+    for(contact con :trigger.new){
+     if(con.FirstName!= trigger.oldMap.get(con.Id).FirstName||(con.LastName!=trigger.oldmap.get(con.id).LastName)){
+            conlist.add(con);
+            
+        }
+    }
+     RecordType contacttypeid = [select id,name from recordtype where name = 'Customer'];
+    for(contact con :conlist){
+        if(con.RecordTypeId== contacttypeid.Id){
+            ContactToupdate.my_contact(trigger.new);
+        }
     }
 }
 
