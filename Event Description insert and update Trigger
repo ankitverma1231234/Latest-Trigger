@@ -107,42 +107,60 @@ trigger contacupdate on Contact (after update) {
 
 Trigger on Consert object
 Handler Class-
-public class consertupdate {
-    public static void my_consert(List<consert__c> consrlist,Map<id,consert__c> newMap){
-       if (Schema.sObjectType.consert__c.isupdateable()) { 
-            // update consert__c
-            // Create a set to hold consertId
-            set<id> consertIds = new set<id>();
-            for(consert__c cons: consrlist){
-                consertIds.add(cons.Id);
-                list<event> eventoncon=[SELECT Id, WhatId,Description, Subject,who.name, who.id, ActivityDate, StartDateTime,          What.Id,What.name,
-                                        Owner.Id, Owner.LastName, Owner.Email
-                                        FROM Event where WhatId =:consertIds];
-                // Quer all customer from ticket object
-                List<ticket__c> ticketcon = [select id,Contact__c, consert__c from ticket__c Where consert__c =: consertIds];
-                // create a Event List
-                List<Event> eventlist = new List<Event>();
-                for(event ev :eventoncon){
-                    ev.Subject = newMap.get(ev.WhatId).Name;
-                    ev.Location = newMap.get(ev.WhatId).venue__c;
-                    ev.StartDateTime = newMap.get(ev.WhatId).Date__c;
-                    ev.EndDateTime = newMap.get(ev.WhatId).Date__c+1;
-                    ev.Description = 'Hii ,' +ev.Who.Name +'\n Greeting! \n' +ev.Subject +'\nat\n' +ev.Location +'\non\n'+ev.StartDateTime    +'\n Please Visit! \n' + 'Happy Event!' ;
-                    eventlist.add(ev);
+public class ConsertToupdate {
+    public static void my_method( Map<Id, Consert__c> consertToMap){
+        try{
+            if (Schema.sObjectType.Consert__c.isUpdateable()) { 
+                
+                Map<Id, Set<String>> customerTicketsMap = new Map<Id, Set<String>>();
+                Map<Id, Consert__c> ticketConcertMap = new Map<Id, Consert__c>();
+                Map<Id, Event> eventUpdateMap = new Map<Id, Event>();
+                
+                // Get the customer
+                for (Ticket__c tickets : [SELECT Id, contact__c, Consert__c, Consert__r.Name, Consert__r.Venue__c, Consert__r.Date__c FROM Ticket__c WHERE Consert__c IN:consertToMap.keySet()]) {
+                    // use consertMap
+                    ticketConcertMap.put(tickets .Id, consertToMap.get(tickets.Consert__c));
+                    
+                    // customer and Ticket Map
+                    if (customerTicketsMap.containsKey(tickets.contact__c)) {
+                        customerTicketsMap.get(tickets.contact__c).add(tickets.Id);
+                    } else {
+                        Set<String> ticketIds = new Set<String>{tickets.Id};
+                            customerTicketsMap.put(tickets.contact__c, ticketIds);
+                    }
                 }
-                // update Events
-                update eventlist;
+                
+                // Get the events 
+                List<Event> eventsToUpdate = [SELECT Id, WhoId, Who.Name, Description, Subject, Location, StartDateTime FROM Event WHERE WhoId IN :customerTicketsMap.keySet()];
+                system.debug('eventsToupdate@@@@>>>>'+eventsToUpdate);
+                
+                // update event description
+                for(Event ev : eventsToUpdate){            
+                    Id customerId = ev.WhoId;            
+                    for(String tk : customerTicketsMap.get(customerId)){               
+                        Consert__c consert = ticketConcertMap.get(tk);                
+                        if(consert != null){
+                            ev.Description = 'Hi, ' + ev.Who.Name + ',\nGreeting!\n' + consert.Name+ ' \nat\n' + consert.Venue__c + ' on\n'  + consert.Date__c + '\nPlease Visit!\n' + '\nHappy Event!\n';
+                            eventUpdateMap.put(ev.Id, ev);
+                        }
+                    }
+                }         
+                
+                // update event
+                List<Event> eventsToUpdateList = new List<Event>(eventUpdateMap.values());
+                update eventsToUpdateList;
             }
-            
+        }catch(Exception ex){
+            system.debug('error>>>>'+ex.getMessage());
         }
         
-    }
+    } 
 }
 
 ********************* Trigger*********************
 trigger consertupdate on consert__c (after update) {
     if(trigger.isafter && trigger.isupdate){
-        consertupdate.my_consert(trigger.new, trigger.newMap);
+        consertupdate.my_consert(trigger.newMap);
     }
 
 }
