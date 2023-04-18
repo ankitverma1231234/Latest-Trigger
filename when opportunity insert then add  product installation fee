@@ -1,0 +1,38 @@
+public class opportunityInstallationfee {
+    public static void myopportunity(List<opportunity> opplist){
+        try{
+            // create a list of opportunitylineitem
+            list<opportunityLineItem> olilist= new list<OpportunityLineItem>();
+            // Query PriceBookEntry object to retrieve the Id, Product2Id, Product2.Id, and Product2.Name fields
+            List<PriceBookEntry> priceBookList = [SELECT Id, Product2Id, Product2.Id, Product2.Name  FROM PriceBookEntry WHERE PriceBook2.isStandard=true LIMIT 1];
+            system.debug('pricbook@@@'+priceBookList);
+            if (Schema.sObjectType.OpportunityLineItem.isCreateable()) {
+                
+                for(opportunity op:opplist){
+                    // add oportunitylineitem into opportunity
+                    OpportunityLineItem oli= New OpportunityLineItem();
+                    oli.OpportunityId = op.ID;
+                    oli.PricebookEntryId = priceBookList[0].Id;
+                    oli.UnitPrice = 7000;
+                    oli.Quantity = 5;
+                    olilist.add(oli);
+                    system.debug('oli@@@'+oli);
+                }
+                if(olilist!=null&&olilist.size()>0)
+                    // insert olilist
+                    insert olilist;
+            }
+        }
+        
+        catch(Exception ex){
+            system.debug('error occur' +ex.getMessage());
+        }
+        
+    }
+}
+
+*********Trigger****************
+trigger installationfee on Opportunity (after insert) {
+ opportunityInstallationfee.myopportunity(trigger.new);
+    
+}
